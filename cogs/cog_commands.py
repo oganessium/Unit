@@ -11,6 +11,7 @@ import numpy as np
 import random
 from random import randint
 import math
+import html
 
 class coolM(object):
 	def __init__(self, bot):
@@ -156,13 +157,65 @@ class coolM(object):
 		await self.bot.say(embed=dgo)
 		
 	@commands.command(pass_context=True)
+	async def weather(self, ctx, *, arg):
+		metric = requests.get("http://api.openweathermap.org/data/2.5/weather?q={}&units=metric&APPID=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".format(arg)).json()
+		imperial = requests.get("http://api.openweathermap.org/data/2.5/weather?q={}&units=imperial&APPID=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX".format(arg)).json()
+		if metric["cod"]=="404":
+			await self.bot.say("Location data not found!")
+		else:	
+			hd="E"
+			vd="N"
+			embed = discord.Embed(title="Weather for the city {0}, {1}".format(metric["name"],metric["sys"]["country"]))
+			if metric["coord"]["lon"] < 0:
+				hd="W"
+			if metric["coord"]["lat"] < 0:
+				vd="S"
+			embed.add_field(name="Coordinates", value="{0}°{1}, {2}°{3}".format(abs(metric["coord"]["lat"]),vd,abs(metric["coord"]["lon"]),hd))
+			embed.add_field(name="Temperature", value="{0}°F, {1}°C".format(imperial["main"]["temp"],metric["main"]["temp"]))
+			embed.add_field(name="Weather", value="{0} ({1})".format(metric["weather"][0]["main"],metric["weather"][0]["description"]))
+			embed.add_field(name="Humidity", value="{0}%".format(metric["main"]["humidity"]))
+			embed.add_field(name="Wind Speed", value="{0}mph, {1}m/s\n{2}°".format(imperial["wind"]["speed"],metric["wind"]["speed"],metric["wind"]["deg"]))
+			embed.set_thumbnail(url="http://openweathermap.org/img/w/{}.png".format(metric["weather"][0]["icon"]))
+			embed.set_footer(text="Weather data from OpenWeatherMap, apiKey used.")
+			await self.bot.say(embed=embed)
+		
+	@commands.command(pass_context=True)
+	async def catfact(self, ctx):
+		thumb = requests.get("http://shibe.online/api/cats?count=[1-100]&urls=[true/false]&httpsUrls=[true/false]").json()[0]
+		req = requests.get("https://catfact.ninja/facts").json()["data"][0]
+		dgo = discord.Embed(title="Cat fact", description=req["fact"])
+		dgo.set_footer(text="Cat Facts from catfact.ninja")
+		dgo.set_thumbnail(url=thumb)
+		await self.bot.say(embed=dgo)
+		
+	@commands.command(pass_context=True)
+	async def dogfact(self, ctx):
+		thumb = requests.get("https://random.dog/woof.json").json()["url"]
+		while True:
+			if ".mp4" in thumb:
+				thumb = requests.get("https://random.dog/woof.json").json()["url"]
+			else:
+				break
+		req = requests.get("https://api-to.get-a.life/dogfact").json()
+		dgo = discord.Embed(title="Dog fact", description=req["fact"])
+		dgo.set_footer(text="Dog Facts from api-to.get-a.life")
+		dgo.set_thumbnail(url=thumb)
+		await self.bot.say(embed=dgo)
+		
+	@commands.command(pass_context=True)
 	async def catinfo(self, ctx, *, arg):
 		in_api=0
 		jdata = requests.get("https://catfact.ninja/breeds").json()
 		for i in jdata['data']:
 			if i['breed'] == arg:
 				in_api=1
-				await self.bot.say("pattern is {}".format(i['pattern']))
+				embed=discord.Embed(title="Cat Info")
+				embed.set_footer(text="Cat Info from catfact.ninja")
+				embed.add_field(name="Native Country", value="{}".format(i['country']))
+				embed.add_field(name="Origin", value="{}".format(i['origin']))
+				embed.add_field(name="Coat Length", value="{}".format(i['coat']))
+				embed.add_field(name="Coat Pattern", value="{}".format(i['pattern']))
+				await self.bot.say(embed=embed)
 				break
 		if(in_api==0):
 			await self.bot.say('There is no info about this cat!')
@@ -210,7 +263,7 @@ class coolM(object):
 			await self.bot.say("invalid input, specify number 1-53")
 		else:
 			dgo = discord.Embed(title="zoop :point_left: :sunglasses: :point_left:")
-			dgo.set_footer(text="API by Yak#7474, Wojaks mostly from boards.4chan.org\\pol\\")
+			dgo.set_footer(text="API by Yak#7474, Wojaks mostly from boards.4chan.org/pol/. (Wojak #{})".format(str(argInt)))
 			req = requests.get("https://raw.githubusercontent.com/oganessium/oganessium.github.io/master/wojaks/wojak.json").json()[argInt-1]
 			print(req)
 			dgo.set_image(url=req)
@@ -219,28 +272,49 @@ class coolM(object):
 	@wojak.error
 	async def wojak_error(self, error, ctx):
 		wjk = discord.Embed(title="zoop :point_left: :sunglasses: :point_left:")
-		wjk.set_footer(text="API by Yak#7474, Wojaks mostly from boards.4chan.org/pol/")
-		req = requests.get("https://raw.githubusercontent.com/oganessium/oganessium.github.io/master/wojaks/wojak.json").json()[randint(0,52)]
-		print(req)
-		wjk.set_image(url=req)
+		ttt=randint(0,52)
+		wjk.set_footer(text="API by Yak#7474, Wojaks mostly from boards.4chan.org/pol/. (Wojak #{})".format(str(ttt+1)))
+		req = requests.get("https://raw.githubusercontent.com/oganessium/oganessium.github.io/master/wojaks/wojak.json").json()
+		print(req[ttt])
+		wjk.set_image(url=req[ttt])
 		await self.bot.say(embed=wjk)
 		
 	@commands.command(pass_context=True)
-	async def trivia(self, ctx):
+	async def tcancel(self, ctx):
+		print("A trivia game has been cancelled!")
+		
+	@commands.command(pass_context=True)
+	async def trivia(self, ctx, *, arg=None):
 		
 		answers = []
 	
 		embed = discord.Embed(title="Trivia")
-		req = requests.get("https://opentdb.com/api.php?amount=1").json()["results"][0]
+		if arg==None:
+			req = requests.get("https://opentdb.com/api.php?amount=1").json()["results"][0]
+		else:
+			alert = await self.bot.say("Searching for category...")
+			req = requests.get("https://opentdb.com/api.php?amount=1").json()["results"][0]
+			i=0
+			while i < 25:
+				req = requests.get("https://opentdb.com/api.php?amount=1").json()["results"][0]
+				i = i + 1
+				print(i)
+				if req['category']==arg:
+					await self.bot.delete_message(alert)
+					break
+			if i>=24:
+				await self.bot.edit_message(alert, new_content="Category not found, giving standard trivia question.")
+				
+			
 		
 		ques = req["question"]
-		if "&quot;" in ques:
-			ques.replace('&quot;','"')
+		ques = html.unescape(ques)
 		
 		embed.add_field(name="Question", value="{}".format(ques))
 		embed.add_field(name="Difficulty", value="{}".format(req["difficulty"]))
 		embed.add_field(name="Category", value="{}".format(req["category"]))
 		embed.set_thumbnail(url="https://pixel.nymag.com/imgs/daily/selectall/2018/01/05/05-encounter-scott-rogowsky.nocrop.w710.h2147483647.jpg")
+		embed.set_footer(text="{}'s Question (respond with answer, type u;tcancel to cancel game)".format(ctx.message.author))
 		
 		if req["type"]=="multiple":
 			answers.append(req["correct_answer"] + "")
@@ -248,23 +322,32 @@ class coolM(object):
 			answers.append(req["incorrect_answers"][1])
 			answers.append(req["incorrect_answers"][2])
 			random.shuffle(answers)
-			embed.add_field(inline=False, name="Options", value="{0}\n{1}\n{2}\n{3}".format(answers[0],answers[1],answers[2],answers[3]))
+			embed.add_field(inline=False, name="Options", value="(1) {0}\n(2) {1}\n(3) {2}\n(4) {3}".format(answers[0],answers[1],answers[2],answers[3]))
 		if req["type"]=="boolean":
+			answers.append(req["correct_answer"] + "")
+			answers.append(req["incorrect_answers"][0])
 			embed.add_field(inline=False, name="Options", value=req["correct_answer"] + "\n" + req["incorrect_answers"][0])
 			
+		
 		tca = req["correct_answer"].lower()
 		
 		if tca.endswith(" "):
 			tca=tca[:-1]
+			
+		
 		
 		trivia = await self.bot.say(embed=embed)
 		channel = ctx.message.channel
 		dd = await self.bot.wait_for_message(timeout=10, author=ctx.message.author)
 		if(dd==None):
 			await self.bot.say("Time up! The answer was **{}**!".format(req["correct_answer"]))
+		elif(dd.content=="u;tcancel"):
+			await self.bot.say("Trivia game cancelled.")
+		elif "u;" in dd.content and dd.content != "u;tcancel":
+			await self.bot.say("**Trivia game automatically cancelled due to new command.**")
 		else:
 			print(dd)
-			if(dd.content.lower()==tca):
+			if dd.content.lower()==tca or dd.content.lower()==str(answers.index(req["correct_answer"])+1):
 				addwin = open("data\\triviadubs.txt", "r")
 				wins = addwin.read()
 				addwin.close()
@@ -277,7 +360,8 @@ class coolM(object):
 			else:
 				await self.bot.say("Oof, wrong answer. The correct answer was: **{}**!".format(req["correct_answer"]))
 			
-		
+			
+			
 		
 def setup(bot):
 	bot.add_cog(coolM(bot))
